@@ -38,11 +38,7 @@ save_dir=./output/NATS-Bench-topology/
 
 OMP_NUM_THREADS=${cpus} python exps/NATS-Bench/main-tss.py \
 	--mode new --srange ${srange} --hyper ${opt} --save_dir ${save_dir} \
-	--datasets cifar10 cifar10 cifar100 ImageNet16-120 \
-	--splits   1       0       0        0 \
-	--xpaths $TORCH_HOME/cifar.python \
-		 $TORCH_HOME/cifar.python \
-		 $TORCH_HOME/cifar.python \
-		 $TORCH_HOME/cifar.python/ImageNet16 \
+	--datasets ninapro \
+	--splits 0 --xpaths $TORCH_HOME/ninapro.python \
 	--workers ${cpus} \
 	--seeds ${all_seeds}

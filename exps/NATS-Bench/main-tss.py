@@ -61,6 +61,8 @@ def evaluate_all_datasets(
             split_info = load_config(
                 "configs/nas-benchmark/{:}-split.txt".format(dataset), None, None
             )
+        elif dataset == "ninapro":
+            split_info = None
         else:
             raise ValueError("invalid dataset : {:}".format(dataset))
         config = load_config(
@@ -170,6 +172,9 @@ def evaluate_all_datasets(
                         pin_memory=True,
                     ),
                 }
+            
+            elif dataset == "ninapro":
+                ValLoaders = {"ori-test": valid_loader}
             else:
                 raise ValueError("invalid dataset : {:}".format(dataset))
 

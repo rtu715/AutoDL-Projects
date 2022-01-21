@@ -12,9 +12,9 @@ class TinyNetwork(nn.Module):
         super(TinyNetwork, self).__init__()
         self._C = C
         self._layerN = N
-
+        self.channel = 1 if num_classes==18 else 3
         self.stem = nn.Sequential(
-            nn.Conv2d(3, C, kernel_size=3, padding=1, bias=False), nn.BatchNorm2d(C)
+            nn.Conv2d(self.channel, C, kernel_size=3, padding=1, bias=False), nn.BatchNorm2d(C)
         )
 
         layer_channels = [C] * N + [C * 2] + [C * 2] * N + [C * 4] + [C * 4] * N

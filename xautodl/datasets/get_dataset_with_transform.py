@@ -6,6 +6,8 @@ import os.path as osp
 import numpy as np
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
+import torch.utils.data as data_utils
+import boto3
 from copy import deepcopy
 from PIL import Image
 
@@ -13,7 +15,7 @@ from xautodl.config_utils import load_config
 
 from .DownsampledImageNet import ImageNet16
 from .SearchDatasetWrap import SearchDataset
-
+from .download_data import download_from_s3
 
 Dataset2Class = {
     "cifar10": 10,
@@ -24,7 +26,9 @@ Dataset2Class = {
     "ImageNet16-150": 150,
     "ImageNet16-120": 120,
     "ImageNet16-200": 200,
+    "ninapro": 18,  
 }
+s3_bucket = "pde-xd"
 
 
 class CUTOUT(object):
@@ -95,6 +99,36 @@ class Lighting(object):
     def __repr__(self):
         return self.__class__.__name__ + "()"
 
+'''sEMG ninapro data'''
+def load_ninapro_data(path, train=True):
+
+    trainset = load_ninapro(path, 'train')
+    valset = load_ninapro(path, 'val')
+    testset = load_ninapro(path, 'test')
+
+    if train:
+        return trainset, valset, testset
+
+    else:
+        trainset = data_utils.ConcatDataset([trainset, valset])
+
+    return trainset, None, testset
+
+def load_ninapro(path, whichset):
+    data_str = 'ninapro_' + whichset + '.npy'
+    label_str = 'label_' + whichset + '.npy'
+
+    data = np.load(os.path.join(path, data_str),
+                             encoding="bytes", allow_pickle=True)
+    labels = np.load(os.path.join(path, label_str), encoding="bytes", allow_pickle=True)
+
+    data = np.transpose(data, (0, 2, 1))
+    data = data[:, None, :, :]
+    data = torch.from_numpy(data.astype(np.float32))
+    labels = torch.from_numpy(labels.astype(np.int64))
+
+    all_data = data_utils.TensorDataset(data, labels)
+    return all_data
 
 def get_datasets(name, root, cutout):
 
@@ -109,6 +143,8 @@ def get_datasets(name, root, cutout):
     elif name.startswith("ImageNet16"):
         mean = [x / 255 for x in [122.68, 116.66, 104.01]]
         std = [x / 255 for x in [63.22, 61.26, 65.09]]
+    elif name == 'ninapro':
+        pass
     else:
         raise TypeError("Unknow dataset : {:}".format(name))
 
@@ -173,6 +209,7 @@ def get_datasets(name, root, cutout):
             xlists.append(Lighting(0.1))
         elif name == "imagenet-1k-s":
             xlists = [transforms.RandomResizedCrop(224, scale=(0.2, 1.0))]
+        
         else:
             raise ValueError("invalid name : {:}".format(name))
         xlists.append(transforms.RandomHorizontalFlip(p=0.5))
@@ -188,6 +225,8 @@ def get_datasets(name, root, cutout):
             ]
         )
         xshape = (1, 3, 224, 224)
+    elif name == 'ninapro':
+        xshape = (1, 1, 16, 52)
     else:
         raise TypeError("Unknow dataset : {:}".format(name))
 
@@ -231,6 +270,13 @@ def get_datasets(name, root, cutout):
         train_data = ImageNet16(root, True, train_transform, 200)
         test_data = ImageNet16(root, False, test_transform, 200)
         assert len(train_data) == 254775 and len(test_data) == 10000
+    elif name == "ninapro":
+        s3 = boto3.client("s3")
+        path = os.path.join(root, 'ninapro_data')
+        os.makedirs(path, exist_ok=True)
+        download_from_s3(s3_bucket, name, path)
+        train_data, _, test_data = load_ninapro_data(path, train=False)
+        assert len(train_data) == 3297 and len(test_data) == 659    
     else:
         raise TypeError("Unknow dataset : {:}".format(name))
 
